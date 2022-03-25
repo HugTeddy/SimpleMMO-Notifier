@@ -1,0 +1,1 @@
+Edit default in ./data/hook.txt & ./data/key.txt
