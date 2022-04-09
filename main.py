@@ -53,7 +53,7 @@ class MyWindow:
 
         self.lbl4 = Label(win, text='Delay:')
         self.t4 = Entry(bd=3, width=5)
-        self.t4.insert(0, "60")
+        self.t4.insert(0, "300")
         self.lbl4.place(x=215, y=75)
         self.t4.place(x=265, y=75)
 
@@ -73,23 +73,29 @@ class MyWindow:
                                   offvalue=False)
         self.c2 = ttk.Checkbutton(win, text='Quest Notifications', variable=self.questCheck, onvalue=True,
                                   offvalue=False)
-        self.c1.place(x=25, y=100)
-        self.c2.place(x=25, y=125)
+        self.c1.place(x=25, y=125)
+        self.c2.place(x=25, y=150)
 
         self.errorMessage = StringVar()
         self.errorMessage.set('')
         self.lbl6 = Label(win, textvariable=self.errorMessage, fg='#f00')
-        self.lbl6.place(x=200, y=125)
+        self.lbl6.place(x=215, y=125)
 
         self.dataMessage = StringVar()
         self.dataMessage.set('?/? Energy   ?/? Quests')
         self.lbl7 = Label(win, textvariable=self.dataMessage, fg='#00008b')
-        self.lbl7.place(x=200, y=100)
+        self.lbl7.place(x=215, y=100)
 
         self.b1 = Button(win, text='Run Checks', command=lambda: self.startChecks())
         self.b1.place(x=320, y=145)
         self.b2 = Button(win, text='Stop Checks', command=lambda: self.stopChecks())
         self.b2.place(x=397, y=145)
+
+        self.lbl8 = Label(win, text='Gold:')
+        self.t6 = Entry(bd=3, width=20)
+        self.lbl8.place(x=25, y=100)
+        self.t6.place(x=75, y=100)
+        self.t6.insert(0, -1)
 
     def readKey(self, k):
         self.t1.insert(0, k)
@@ -97,19 +103,24 @@ class MyWindow:
     def readHook(self, h):
         self.t2.insert(0, h)
 
-    def sendNoti(self, ntype, value):
+    def sendNoti(self, ntype, value, gval=0):
+        if gval != 0:
+            message = f"You are out of safe mode with {gval:,} gold on you!"
+        else:
+            message = f"Your {value} is FULL"
+
         if ntype == "Windows":
             try:
-                self.toaster.show_toast("SimpleMMO Notification", f"Your {value} is FULL", icon_path="./data/logo.ico")
+                self.toaster.show_toast("SimpleMMO Notification", f"{message}", icon_path="./data/logo.ico")
                 self.errorMessage.set(f'Sending Quest Notification')
             except Exception as e:
                 self.errorMessage.set(f'Error: {e}')
         else:
             try:
                 if self.t3.get() != "":
-                    webhook = DiscordWebhook(url=self.t2.get(), content=f"[<@{self.t3.get()}>] Your {value} is FULL")
+                    webhook = DiscordWebhook(url=self.t2.get(), content=f"[<@{self.t3.get()}>] {message}")
                 else:
-                    webhook = DiscordWebhook(url=self.t2.get(), content=f"Your {value} is FULL")
+                    webhook = DiscordWebhook(url=self.t2.get(), content=f"{message}")
                 webhook.execute()
                 self.errorMessage.set(f'Sending Quest Notification')
             except Exception as e:
@@ -167,6 +178,13 @@ class MyWindow:
             self.dataMessage.set(
                 f'{res["energy"]:,}/{res["maximum_energy"]:,} Energy   {res["quest_points"]:,}/{res["maximum_quest_points"]:,} Quests')
 
+            goldcheck = self.t6.get()
+            if goldcheck != -1 and res["safeMode"] == 0 and res["gold"] > int(goldcheck):
+                if self.notificationType.get() == "Windows":
+                    self.sendNoti("Windows", "Money", res["gold"])
+                else:
+                    self.sendNoti("Discord", "Money", res["gold"])
+            time.sleep(10)
             if self.questCheck.get() and res["quest_points"] >= res["maximum_quest_points"]:
                 if self.notificationType.get() == "Windows":
                     self.sendNoti("Windows", "QP")
